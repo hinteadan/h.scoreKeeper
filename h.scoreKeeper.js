@@ -37,7 +37,7 @@
     this.randomizeArray = randomizeArray;
 
 }).call(this);
-(function (undefined) {
+(function (escape, undefined) {
     'use strict';
 
     function Individual(firstName, lastName) {
@@ -58,6 +58,11 @@
                 '<Unknown>';
         }
 
+        function generateId() {
+            return escape(generateFullName().toLowerCase().replace(/ /g, ''));
+        }
+
+        this.id = generateId;
         this.firstName = firstName;
         this.lastName = lastName;
         this.fullName = generateFullName;
@@ -236,7 +241,7 @@
     this.H.ScoreKeeper.Clash = Clash;
     this.H.ScoreKeeper.Projector = Projector;
 
-}).call(this);
+}).call(this, this.escape);
 
 (function (sk, randomizeArray, splitArray, undefined) {
     'use strict';
