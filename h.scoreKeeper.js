@@ -87,10 +87,7 @@
         }
 
         this.name = name;
-        this.individuals = function () {
-            /// <returns type='Array' elementType='Individual' />
-            return individuals || [];
-        };
+        this.individuals = individuals;
         this.addMember = function (person) {
             addIndividual(person);
             return this;
@@ -125,9 +122,8 @@
     function Clash(parties, details) {
         /// <param name='parties' type='Array' elementType='Party' />
 
-        var points = [],
-            winningParty = null,
-            winningNotes;
+    	var self = this,
+			points = [];
 
         function checkPartyIsPartOfThisClash(party) {
             /// <param name='party' type='Party' />
@@ -153,47 +149,44 @@
 
         function closeAndSetWinner(winner, notes) {
             checkPartyIsPartOfThisClash(winner);
-            winningParty = winner;
-            winningNotes = notes;
+            self.winner = winner;
+            self.winnerNotes = notes;
         }
 
-        function hasEnded(){
-            return winningParty !== null;
+        function hasEnded() {
+        	return self.winner !== null;
         }
 
     	//Public API
         this.details = details || {};
-        this.parties = function () {
-            /// <returns type='Array' elementType='Party' />
-            return parties || [];
-        };
-        this.points = function () {
-            /// <returns type='Array' elementType='Point' />
-            return points;
-        };
+        this.parties = parties;
+        this.points = points;
         this.pointFor = function (party) {
-            scorePointForPartyWithDetails(party, undefined);
+        	scorePointForPartyWithDetails(party, undefined);
+        	return this;
         };
         this.pointWith = function (details) {
             return {
                 for: function (party) {
-                    scorePointForPartyWithDetails(party, details);
+                	scorePointForPartyWithDetails(party, details);
+                	return this;
                 }
             };
         };
-        this.undoPoint = undoLastPoint;
+        this.undoPoint = function () {
+        	undoLastPoint();
+        	return this;
+        };
         this.close = function (winner, notes) {
             if (hasEnded()) {
-                throw new Error('This clash ended already in favor of ' + winningParty.name);
+                throw new Error('This clash ended already in favor of ' + self.winner.name);
             }
             closeAndSetWinner(winner, notes);
             return this;
         };
         this.hasEnded = hasEnded;
-        this.winner = function () {
-            /// <returns type='Party' />
-            return winningParty;
-        };
+        this.winner = null;
+        this.winnerNotes = null;
     }
 
     function Projector(clash) {
