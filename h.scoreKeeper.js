@@ -32,9 +32,31 @@
         return result;
     }
 
-    this.cloneArray = cloneArray;
-    this.splitArray = splitArray;
-    this.randomizeArray = randomizeArray;
+    function map(array, factory) {
+        var mapping = [];
+        for (var i = 0; i < array.length; i++) {
+            mapping.push(factory(array[i], i));
+        }
+        return mapping;
+    }
+
+    function find(array, match) {
+        for (var i = 0; i < array.length; i++) {
+            if (match(array[i], i) === true) {
+                return array[i];
+            }
+        }
+        return null;
+    }
+
+    this.H = this.H || {};
+    this.H.JsUtils = this.H.JsUtils || {};
+
+    this.H.JsUtils.cloneArray = cloneArray;
+    this.H.JsUtils.splitArray = splitArray;
+    this.H.JsUtils.randomizeArray = randomizeArray;
+    this.H.JsUtils.map = map;
+    this.H.JsUtils.find = find;
 
 }).call(this);
 (function (escape, undefined) {
@@ -67,6 +89,11 @@
 		this.lastName = lastName;
 		this.fullName = generateFullName;
 		this.shortName = generateShortName;
+		this.isMatching = function (otherIndividual) {
+		    return typeof otherIndividual.id === 'function' ?
+                this.id() === otherIndividual.id() :
+                this.firstName === otherIndividual.firstName && this.lastName === otherIndividual.lastName;
+		};
 	}
 
 	function Party(name, details) {
@@ -117,6 +144,13 @@
 		this.party = party;
 		this.timestamp = new Date();
 		this.details = details || {};
+		this.setTimestamp = function (timestamp) {
+		    if (!(timestamp instanceof Date)) {
+		        return;
+		    }
+		    this.timestamp = timestamp;
+		    return this;
+		};
 	}
 
 	function Clash(parties, details) {
@@ -138,15 +172,19 @@
 			throw new Error('The given party, named <<' + party.name + '>>, is not part of this clash.');
 		}
 
+		function scorePoint(point) {
+		    /// <param name='point' type='Point' />
+		    checkPartyIsPartOfThisClash(point.party);
+		    points.push(point);
+		    if (!pointsPerParty[point.party.name]) {
+		        pointsPerParty[point.party.name] = [];
+		    }
+		    pointsPerParty[point.party.name].push(point);
+		}
+
 		function scorePointForPartyWithDetails(party, pointDetails) {
-			/// <param name='party' type='Party' />
-			checkPartyIsPartOfThisClash(party);
-			var point = new Point(party, pointDetails);
-			points.push(point);
-			if (!pointsPerParty[party.name]) {
-				pointsPerParty[party.name] = [];
-			}
-			pointsPerParty[party.name].push(point);
+		    /// <param name='party' type='Party' />
+		    scorePoint(new Point(party, pointDetails));
 		}
 
 		function pointsFor(party) {
@@ -187,6 +225,16 @@
 					return this;
 				}
 			};
+		};
+		this.addPoint = function (point) {
+		    scorePoint(point);
+		    return this;
+		};
+		this.addPoints = function (points) {
+		    for (var i = 0; i < points.length; i++) {
+		        scorePoint(points[i]);
+		    }
+		    return this;
 		};
 		this.undoPoint = function () {
 			undoLastPoint();
@@ -252,6 +300,44 @@
 
 }).call(this, this.escape);
 
+(function (sk, map, find) {
+    'use strict';
+
+    sk.Individual.revive = function (dto) {
+        return new sk.Individual(dto.firstName, dto.lastName);
+    };
+
+    sk.Party.revive = function (dto, individualsPool) {
+        /// <param name='individualsPool' optional='true' />
+        return new sk.Party(dto.name, dto.details)
+            .addMembers(map(dto.individuals, function (individualDto) {
+                if (!individualsPool) {
+                    return sk.Individual.revive(individualDto);
+                }
+                return find(individualsPool, function (p) { return p.isMatching(individualDto); }) ||
+                    sk.Individual.revive(individualDto);
+            }));
+    };
+
+    sk.Point.revive = function (dto, partyPool) {
+        /// <param name='partyPool' optional='true' />
+        return new sk.Point(
+            partyPool ? find(partyPool, function (party) { return party.name === dto.party.name; }) : sk.Party.revive(dto),
+            dto.details).setTimestamp(dto.timestamp);
+    };
+
+    sk.Clash.revive = function (dto, partyPool) {
+        /// <param name='partyPool' optional='true' />
+        var parties = map(dto.parties, function (partyDto) {
+            return partyPool ? find(partyPool, function (p) { return p.name === partyDto.name; }) : sk.Party.revive(partyDto);
+        });
+
+        return sk.Clash(parties, dto.details).addPoints(map(dto.points, function (pointDto) {
+            return sk.Point.revive(pointDto, parties);
+        }));
+    };
+
+}).call(this, this.H.ScoreKeeper, this.H.JsUtils.map, this.H.JsUtils.find);
 (function (sk, randomizeArray, splitArray, undefined) {
     'use strict';
 
@@ -321,7 +407,7 @@
     sk.Sattelites = sk.Sattelites || {};
     sk.Sattelites.RandomPartiesGenerator = RandomPartiesGenerator;
 
-}).call(this, this.H.ScoreKeeper, this.randomizeArray, this.splitArray);
+}).call(this, this.H.ScoreKeeper, this.H.JsUtils.randomizeArray, this.H.JsUtils.splitArray);
 (function (sk, randomizeArray, undefined) {
     'use strict';
 
@@ -436,7 +522,7 @@
     sk.Logistics = sk.Logistics || {};
     sk.Logistics.SingleEliminationSystem = SingleEliminationSystem;
 
-}).call(this, this.H.ScoreKeeper, this.randomizeArray);
+}).call(this, this.H.ScoreKeeper, this.H.JsUtils.randomizeArray);
 (function (sk, undefined) {
     'use strict';
 
