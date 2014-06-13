@@ -332,7 +332,7 @@
             return partyPool ? find(partyPool, function (p) { return p.name === partyDto.name; }) : sk.Party.revive(partyDto);
         });
 
-        return sk.Clash(parties, detailsFactory ? detailsFactory(dto.details) : dto.details)
+        return new sk.Clash(parties, detailsFactory ? detailsFactory(dto.details) : dto.details)
             .addPoints(map(dto.points, function (pointDto) {
                 return sk.Point.revive(pointDto, parties);
             }));
