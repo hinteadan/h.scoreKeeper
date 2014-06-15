@@ -221,6 +221,10 @@
 			return pointsPerParty[party.name] || [];
 		}
 
+		function scoreFor(party) {
+			return pointsFor(party).length;
+		}
+
 		function undoLastPoint() {
 			if (!points.length) {
 				return;
@@ -243,6 +247,7 @@
 		this.parties = parties;
 		this.points = points;
 		this.pointsFor = pointsFor;
+		this.scoreFor = scoreFor;
 		this.pointFor = function (party) {
 			scorePointForPartyWithDetails(party, undefined);
 			return this;
