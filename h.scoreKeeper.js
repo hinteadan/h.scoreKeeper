@@ -1,6 +1,12 @@
 (function (undefined) {
     'use strict';
 
+    function each(array, processor) {
+    	for (var i = 0; i < array.length; i++) {
+    		processor(array[i], i);
+    	}
+    }
+
     function cloneArray(source) {
         var clone = [];
         for (var i = 0; i < source.length; i++) {
@@ -49,17 +55,39 @@
         return null;
     }
 
+    function all(array, condition) {
+    	for (var i = 0; i < array.length; i++) {
+    		if (condition(array[i], i) === false) {
+    			return false;
+    		}
+    	}
+    	return true;
+    }
+
+    function where(array, match) {
+    	var result = [];
+    	for (var i = 0; i < array.length; i++) {
+    		if (match(array[i], i) === true) {
+    			result.push(array[i]);
+    		}
+    	}
+    	return result;
+    }
+
     this.H = this.H || {};
     this.H.JsUtils = this.H.JsUtils || {};
 
+    this.H.JsUtils.each = each;
     this.H.JsUtils.cloneArray = cloneArray;
     this.H.JsUtils.splitArray = splitArray;
     this.H.JsUtils.randomizeArray = randomizeArray;
     this.H.JsUtils.map = map;
     this.H.JsUtils.find = find;
+    this.H.JsUtils.all = all;
+    this.H.JsUtils.where = where;
 
 }).call(this);
-(function (escape, undefined) {
+(function (escape, all, where, each) {
 	'use strict';
 
 	function Individual(firstName, lastName) {
@@ -90,7 +118,7 @@
 		this.fullName = generateFullName;
 		this.shortName = generateShortName;
 		this.isMatching = function (otherIndividual) {
-		    return typeof otherIndividual.id === 'function' ?
+			return typeof otherIndividual.id === 'function' ?
                 this.id() === otherIndividual.id() :
                 this.firstName === otherIndividual.firstName && this.lastName === otherIndividual.lastName;
 		};
@@ -145,11 +173,11 @@
 		this.timestamp = new Date();
 		this.details = details || {};
 		this.setTimestamp = function (timestamp) {
-		    if (!(timestamp instanceof Date)) {
-		        return;
-		    }
-		    this.timestamp = timestamp;
-		    return this;
+			if (!(timestamp instanceof Date)) {
+				return;
+			}
+			this.timestamp = timestamp;
+			return this;
 		};
 	}
 
@@ -158,7 +186,8 @@
 
 		var self = this,
 			points = [],
-    		pointsPerParty = {};
+    		pointsPerParty = {},
+			winnerParty = null;
 
 		function checkPartyIsPartOfThisClash(party) {
 			/// <param name='party' type='Party' />
@@ -173,18 +202,18 @@
 		}
 
 		function scorePoint(point) {
-		    /// <param name='point' type='Point' />
-		    checkPartyIsPartOfThisClash(point.party);
-		    points.push(point);
-		    if (!pointsPerParty[point.party.name]) {
-		        pointsPerParty[point.party.name] = [];
-		    }
-		    pointsPerParty[point.party.name].push(point);
+			/// <param name='point' type='Point' />
+			checkPartyIsPartOfThisClash(point.party);
+			points.push(point);
+			if (!pointsPerParty[point.party.name]) {
+				pointsPerParty[point.party.name] = [];
+			}
+			pointsPerParty[point.party.name].push(point);
 		}
 
 		function scorePointForPartyWithDetails(party, pointDetails) {
-		    /// <param name='party' type='Party' />
-		    scorePoint(new Point(party, pointDetails));
+			/// <param name='party' type='Party' />
+			scorePoint(new Point(party, pointDetails));
 		}
 
 		function pointsFor(party) {
@@ -201,12 +230,12 @@
 
 		function closeAndSetWinner(winner, notes) {
 			checkPartyIsPartOfThisClash(winner);
-			self.winner = winner;
+			winnerParty = winner;
 			self.winnerNotes = notes;
 		}
 
 		function hasEnded() {
-			return self.winner !== null;
+			return winnerParty !== null;
 		}
 
 		//Public API
@@ -227,14 +256,14 @@
 			};
 		};
 		this.addPoint = function (point) {
-		    scorePoint(point);
-		    return this;
+			scorePoint(point);
+			return this;
 		};
 		this.addPoints = function (points) {
-		    for (var i = 0; i < points.length; i++) {
-		        scorePoint(points[i]);
-		    }
-		    return this;
+			for (var i = 0; i < points.length; i++) {
+				scorePoint(points[i]);
+			}
+			return this;
 		};
 		this.undoPoint = function () {
 			undoLastPoint();
@@ -242,14 +271,56 @@
 		};
 		this.close = function (winner, notes) {
 			if (hasEnded()) {
-				throw new Error('This clash ended already in favor of ' + self.winner.name);
+				throw new Error('This clash ended already in favor of ' + winnerParty.name);
 			}
 			closeAndSetWinner(winner, notes);
 			return this;
 		};
 		this.hasEnded = hasEnded;
-		this.winner = null;
+		this.winner = function () { return winnerParty; };
 		this.winnerNotes = null;
+	}
+
+	function ClashSet(clashes, parties, details) {
+
+		function scoreFor(party) {
+			var score = 0;
+			/// <param name='party' type='Party' />
+			each(clashes, function (c) {
+				/// <param name='c' type='Clash' />
+				if (c.winner() === party) {
+					score++;
+				}
+			});
+			return score;
+		}
+
+		//Public API
+		this.details = details || {};
+		this.parties = parties;
+		this.clashes = clashes;
+		this.scoreFor = scoreFor;
+		this.hasEnded = function () {
+			return all(clashes, function (c) { return c.hasEnded(); });
+		};
+		this.winner = function () {
+			if (!this.hasEnded()) {
+				return null;
+			}
+
+			var winner = parties[0],
+				winnerScore = scoreFor(winner);
+
+			each(parties, function (p) {
+				var score = scoreFor(p);
+				if (score > winnerScore) {
+					winner = p;
+					winnerScore = score;
+				}
+			});
+
+			return winner;
+		};
 	}
 
 	function Projector(clash) {
@@ -296,9 +367,10 @@
 	this.H.ScoreKeeper.Party = Party;
 	this.H.ScoreKeeper.Point = Point;
 	this.H.ScoreKeeper.Clash = Clash;
+	this.H.ScoreKeeper.ClashSet = ClashSet;
 	this.H.ScoreKeeper.Projector = Projector;
 
-}).call(this, this.escape);
+}).call(this, this.escape, this.H.JsUtils.all, this.H.JsUtils.where, this.H.JsUtils.each);
 
 (function (sk, map, find) {
     'use strict';
