@@ -87,7 +87,7 @@
     this.H.JsUtils.where = where;
 
 }).call(this);
-(function (escape, all, where, each) {
+(function (escape, all, where, each, find) {
 	'use strict';
 
 	function Individual(firstName, lastName) {
@@ -166,6 +166,7 @@
 		this.details = details || {};
 	}
 	Party.empty = new Party('Bye Bye');
+	Party.tie = new Party('Tie');
 
 	function Point(party, details) {
 		/// <param name='party' type='Party' />
@@ -191,6 +192,9 @@
 
 		function checkPartyIsPartOfThisClash(party) {
 			/// <param name='party' type='Party' />
+			if (party === Party.tie) {
+				return;
+			}
 			if (party) {
 				for (var i in parties) {
 					if (parties[i] === party) {
@@ -276,10 +280,20 @@
 		};
 		this.close = function (winner, notes) {
 			if (hasEnded()) {
-				throw new Error('This clash ended already in favor of ' + winnerParty.name);
+				throw new Error('This clash ended already');
 			}
 			closeAndSetWinner(winner, notes);
 			return this;
+		};
+		this.closeAsTie = function (notes) {
+			if (hasEnded()) {
+				throw new Error('This clash ended already');
+			}
+			closeAndSetWinner(Party.tie, notes);
+			return this;
+		};
+		this.isTie = function () {
+			return hasEnded() && winnerParty === Party.tie;
 		};
 		this.hasEnded = hasEnded;
 		this.winner = function () { return winnerParty; };
@@ -287,6 +301,7 @@
 	}
 
 	function ClashSet(clashes, parties, details) {
+		///<param name='clashes' type='Array' elementType='Clash' />
 
 		function scoreFor(party) {
 			var score = 0;
@@ -325,6 +340,10 @@
 			});
 
 			return winner;
+		};
+
+		this.activeClash = function () {
+			return find(this.clashes, function (c) { return !c.hasEnded(); });
 		};
 	}
 
@@ -375,7 +394,7 @@
 	this.H.ScoreKeeper.ClashSet = ClashSet;
 	this.H.ScoreKeeper.Projector = Projector;
 
-}).call(this, this.escape, this.H.JsUtils.all, this.H.JsUtils.where, this.H.JsUtils.each);
+}).call(this, this.escape, this.H.JsUtils.all, this.H.JsUtils.where, this.H.JsUtils.each, this.H.JsUtils.find);
 
 (function (sk, map, find) {
     'use strict';
