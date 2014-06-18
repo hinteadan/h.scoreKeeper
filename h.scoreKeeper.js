@@ -343,7 +343,7 @@
 		};
 
 		this.activeClash = function () {
-			return find(this.clashes, function (c) { return !c.hasEnded(); });
+			return find(clashes, function (c) { return !c.hasEnded(); });
 		};
 	}
 
