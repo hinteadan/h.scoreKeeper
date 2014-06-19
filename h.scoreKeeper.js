@@ -465,13 +465,13 @@
         return clash;
     };
 
-    sk.ClashSet.revive = function (dto, partyPool, detailsFactory) {
+    sk.ClashSet.revive = function (dto, partyPool, detailsFactory, clashDetailsFactory) {
         /// <param name='partyPool' optional='true' />
         var parties = map(dto.parties, function (partyDto) {
                 return partyPool ? find(partyPool, function (p) { return p.name === partyDto.name; }) : sk.Party.revive(partyDto);
             }),
             clashes = map(dto.clashes, function (clashDto) {
-                return sk.Clash.revive(clashDto, parties, detailsFactory);
+                return sk.Clash.revive(clashDto, parties, clashDetailsFactory);
             });
 
         return new sk.ClashSet(clashes, parties, detailsFactory ? detailsFactory(dto.details) : dto.details);
