@@ -1,93 +1,98 @@
 (function (undefined) {
-    'use strict';
+	'use strict';
 
-    function each(array, processor) {
-    	for (var i = 0; i < array.length; i++) {
-    		processor(array[i], i);
-    	}
-    }
+	function each(array, processor) {
+		for (var i = 0; i < array.length; i++) {
+			processor(array[i], i);
+		}
+	}
 
-    function cloneArray(source) {
-        var clone = [];
-        for (var i = 0; i < source.length; i++) {
-            clone.push(source[i]);
-        }
-        return clone;
-    }
+	function cloneArray(source) {
+		var clone = [];
+		for (var i = 0; i < source.length; i++) {
+			clone.push(source[i]);
+		}
+		return clone;
+	}
 
-    function splitArray(source, count) {
-        /// <param name='source' type='Array' />
-        var arrayToSplit = cloneArray(source),
+	function splitArray(source, count) {
+		/// <param name='source' type='Array' />
+		var arrayToSplit = cloneArray(source),
             chunks = [];
-        while (arrayToSplit.length) {
-            chunks.push(arrayToSplit.splice(0, count));
-        }
-        return chunks;
-    }
+		while (arrayToSplit.length) {
+			chunks.push(arrayToSplit.splice(0, count));
+		}
+		return chunks;
+	}
 
-    function randomizeArray(source) {
-        /// <param name='source' type='Array' />
-        var clone = cloneArray(source),
+	function randomizeArray(source) {
+		/// <param name='source' type='Array' />
+		var clone = cloneArray(source),
             result = [];
 
-        while (clone.length) {
-            var index = Math.round(Math.random() * (clone.length - 1));
-            result.push(clone.splice(index, 1)[0]);
-        }
+		while (clone.length) {
+			var index = Math.round(Math.random() * (clone.length - 1));
+			result.push(clone.splice(index, 1)[0]);
+		}
 
-        return result;
-    }
+		return result;
+	}
 
-    function map(array, factory) {
-        var mapping = [];
-        for (var i = 0; i < array.length; i++) {
-            mapping.push(factory(array[i], i));
-        }
-        return mapping;
-    }
+	function map(array, factory) {
+		var mapping = [];
+		for (var i = 0; i < array.length; i++) {
+			mapping.push(factory(array[i], i));
+		}
+		return mapping;
+	}
 
-    function find(array, match) {
-        for (var i = 0; i < array.length; i++) {
-            if (match(array[i], i) === true) {
-                return array[i];
-            }
-        }
-        return null;
-    }
+	function find(array, match) {
+		for (var i = 0; i < array.length; i++) {
+			if (match(array[i], i) === true) {
+				return array[i];
+			}
+		}
+		return null;
+	}
 
-    function all(array, condition) {
-    	for (var i = 0; i < array.length; i++) {
-    		if (condition(array[i], i) === false) {
-    			return false;
-    		}
-    	}
-    	return true;
-    }
+	function last(array) {
+		return array && array.length > 0 ? array[array.length - 1] : null;
+	}
 
-    function where(array, match) {
-    	var result = [];
-    	for (var i = 0; i < array.length; i++) {
-    		if (match(array[i], i) === true) {
-    			result.push(array[i]);
-    		}
-    	}
-    	return result;
-    }
+	function all(array, condition) {
+		for (var i = 0; i < array.length; i++) {
+			if (condition(array[i], i) === false) {
+				return false;
+			}
+		}
+		return true;
+	}
 
-    this.H = this.H || {};
-    this.H.JsUtils = this.H.JsUtils || {};
+	function where(array, match) {
+		var result = [];
+		for (var i = 0; i < array.length; i++) {
+			if (match(array[i], i) === true) {
+				result.push(array[i]);
+			}
+		}
+		return result;
+	}
 
-    this.H.JsUtils.each = each;
-    this.H.JsUtils.cloneArray = cloneArray;
-    this.H.JsUtils.splitArray = splitArray;
-    this.H.JsUtils.randomizeArray = randomizeArray;
-    this.H.JsUtils.map = map;
-    this.H.JsUtils.find = find;
-    this.H.JsUtils.all = all;
-    this.H.JsUtils.where = where;
+	this.H = this.H || {};
+	this.H.JsUtils = this.H.JsUtils || {};
+
+	this.H.JsUtils.each = each;
+	this.H.JsUtils.cloneArray = cloneArray;
+	this.H.JsUtils.splitArray = splitArray;
+	this.H.JsUtils.randomizeArray = randomizeArray;
+	this.H.JsUtils.map = map;
+	this.H.JsUtils.find = find;
+	this.H.JsUtils.last = last;
+	this.H.JsUtils.all = all;
+	this.H.JsUtils.where = where;
 
 }).call(this);
-(function (escape, all, where, each) {
+(function (escape, all, where, each, find, last) {
 	'use strict';
 
 	function Individual(firstName, lastName) {
@@ -166,6 +171,7 @@
 		this.details = details || {};
 	}
 	Party.empty = new Party('Bye Bye');
+	Party.tie = new Party('Tie');
 
 	function Point(party, details) {
 		/// <param name='party' type='Party' />
@@ -191,6 +197,9 @@
 
 		function checkPartyIsPartOfThisClash(party) {
 			/// <param name='party' type='Party' />
+			if (party === Party.tie) {
+				return;
+			}
 			if (party) {
 				for (var i in parties) {
 					if (parties[i] === party) {
@@ -276,10 +285,20 @@
 		};
 		this.close = function (winner, notes) {
 			if (hasEnded()) {
-				throw new Error('This clash ended already in favor of ' + winnerParty.name);
+				throw new Error('This clash ended already');
 			}
 			closeAndSetWinner(winner, notes);
 			return this;
+		};
+		this.closeAsTie = function (notes) {
+			if (hasEnded()) {
+				throw new Error('This clash ended already');
+			}
+			closeAndSetWinner(Party.tie, notes);
+			return this;
+		};
+		this.isTie = function () {
+			return hasEnded() && winnerParty === Party.tie;
 		};
 		this.hasEnded = hasEnded;
 		this.winner = function () { return winnerParty; };
@@ -287,6 +306,7 @@
 	}
 
 	function ClashSet(clashes, parties, details) {
+		///<param name='clashes' type='Array' elementType='Clash' />
 
 		function scoreFor(party) {
 			var score = 0;
@@ -308,6 +328,12 @@
 		this.hasEnded = function () {
 			return all(clashes, function (c) { return c.hasEnded(); });
 		};
+		this.isTie = function () {
+		    var tieScore = scoreFor(parties[0]);
+		    return all(parties, function (p) {
+		        return scoreFor(p) === tieScore;
+		    }) || this.winner() === Party.tie;
+		};
 		this.winner = function () {
 			if (!this.hasEnded()) {
 				return null;
@@ -325,6 +351,18 @@
 			});
 
 			return winner;
+		};
+		this.close = function () {
+			if (all(clashes, function (c) { return !c.hasEnded(); })) {
+				throw new Error('No clash has ended yet. You probably want to close the set when you have a win scenario!');
+			}
+			while (!last(clashes).hasEnded()) {
+				clashes.pop();
+			}
+		};
+
+		this.activeClash = function () {
+			return find(clashes, function (c) { return !c.hasEnded(); });
 		};
 	}
 
@@ -375,7 +413,7 @@
 	this.H.ScoreKeeper.ClashSet = ClashSet;
 	this.H.ScoreKeeper.Projector = Projector;
 
-}).call(this, this.escape, this.H.JsUtils.all, this.H.JsUtils.where, this.H.JsUtils.each);
+}).call(this, this.escape, this.H.JsUtils.all, this.H.JsUtils.where, this.H.JsUtils.each, this.H.JsUtils.find, this.H.JsUtils.last);
 
 (function (sk, map, find) {
     'use strict';
@@ -413,6 +451,18 @@
             .addPoints(map(dto.points, function (pointDto) {
                 return sk.Point.revive(pointDto, parties);
             }));
+    };
+
+    sk.ClashSet.revive = function (dto, partyPool, detailsFactory) {
+        /// <param name='partyPool' optional='true' />
+        var parties = map(dto.parties, function (partyDto) {
+                return partyPool ? find(partyPool, function (p) { return p.name === partyDto.name; }) : sk.Party.revive(partyDto);
+            }),
+            clashes = map(dto.clashes, function (clashDto) {
+                return sk.Clash.revive(clashDto, parties, detailsFactory);
+            });
+
+        return new sk.ClashSet(clashes, parties, detailsFactory ? detailsFactory(dto.details) : dto.details);
     };
 
 }).call(this, this.H.ScoreKeeper, this.H.JsUtils.map, this.H.JsUtils.find);
